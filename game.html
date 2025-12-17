@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hexagon Tunnel Runner 3D</title>
+<style>
+        body { margin: 0; overflow: hidden; background-color: #000; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        #hud-top {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none; /* Click through */
+        }
+
+        .hud-panel {
+            background: rgba(0, 20, 40, 0.7);
+            border: 1px solid #00ffff;
+            padding: 15px 25px;
+            border-radius: 4px;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+        }
+
+        .hud-label {
+            font-size: 12px;
+            color: #00aaaa;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .hud-value {
+            font-size: 32px;
+            font-weight: 800;
+            color: #fff;
+            text-shadow: 0 0 10px #00ffff;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        #score-container {
+            display: none;
+        }
+
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            display: none;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #ff0000;
+            padding: 40px;
+            box-shadow: 0 0 50px rgba(255, 0, 0, 0.5);
+            z-index: 100;
+        }
+
+        h1 { font-size: 64px; color: #ff0000; text-shadow: 0 0 20px #ff0000; margin: 0 0 20px 0; letter-spacing: 4px; }
+        
+        p { font-size: 24px; margin-bottom: 30px; color: #fff; }
+
+        button {
+            background: rgba(255, 0, 0, 0.2);
+            border: 2px solid #ff0000;
+            color: #ff0000;
+            padding: 15px 40px;
+            font-size: 24px;
+            cursor: pointer;
+            font-family: inherit;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s;
+        }
+        button:hover { 
+            background: #ff0000; 
+            color: #000; 
+            box-shadow: 0 0 30px #ff0000;
+        }
+
+        #instructions {
+            position: absolute;
+            bottom: 30px;
+            width: 100%;
+            text-align: center;
+            color: #00aaaa;
+            font-size: 14px;
+            letter-spacing: 2px;
+            text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+        }
+        #mobile-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 50%; /* Bottom half of screen */
+            display: flex;
+            pointer-events: none; /* Let clicks pass through to game if needed, but buttons will capture */
+            z-index: 50;
+        }
+
+        .control-btn {
+            flex: 1;
+            height: 100%;
+            background: rgba(0, 255, 255, 0.0);
+            border: none;
+            outline: none;
+            pointer-events: auto;
+            touch-action: manipulation; /* Disable double-tap zoom */
+            position: relative;
+            cursor: pointer;
+        }
+        
+        /* Visual indicator for touch zones (optional, maybe just arrows) */
+        .control-btn::after {
+            content: '';
+            position: absolute;
+            bottom: 40px;
+            width: 60px;
+            height: 60px;
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            border-radius: 50%;
+            background: rgba(0, 20, 40, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #00ffff;
+            backdrop-filter: blur(2px);
+        }
+
+        #btn-left::after {
+            left: 40px;
+            content: '<';
+        }
+
+        #btn-right::after {
+            right: 40px;
+            content: '>';
+        }
+
+        .control-btn:active {
+            background: rgba(0, 255, 255, 0.1);
+        }
+        .control-btn:active::after {
+            background: rgba(0, 255, 255, 0.2);
+            transform: scale(1.1);
+        }
+        #pause-btn {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50px;
+            height: 50px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ffff;
+            border-radius: 0;
+            color: #00ffff;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            pointer-events: auto;
+            transition: all 0.2s;
+        }
+        #pause-btn:hover {
+            background: #00ffff;
+            color: #000;
+            box-shadow: 0 0 20px #00ffff;
+        }
+        #pause-menu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            display: none;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ffff;
+            padding: 40px;
+            box-shadow: 0 0 50px rgba(0, 255, 255, 0.3);
+            z-index: 101;
+        }
+        #pause-menu h2 {
+            color: #00ffff;
+            margin: 0 0 20px 0;
+            font-size: 36px;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            text-shadow: 0 0 10px #00ffff;
+        }
+        .menu-btn {
+            background: rgba(0, 255, 255, 0.1);
+            border: 1px solid #00ffff;
+            color: #00ffff;
+            padding: 10px 30px;
+            font-size: 18px;
+            cursor: pointer;
+            margin: 10px;
+            font-family: inherit;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s;
+            display: block;
+            width: 200px;
+        }
+        .menu-btn:hover {
+            background: #00ffff;
+            color: #000;
+            box-shadow: 0 0 20px #00ffff;
+        }
+    </style>
+</head>
+<body>
+    <div id="hud-top">
+        <div class="hud-panel">
+            <span class="hud-label">Distance</span>
+            <span id="score" class="hud-value">0</span>
+        </div>
+        <div class="hud-panel">
+            <span class="hud-label">Velocity</span>
+            <span id="speed" class="hud-value">40</span> <span style="font-size:14px; color:#00aaaa">KM/H</span>
+        </div>
+    </div>
+    
+    <button id="pause-btn" onclick="togglePause()">||</button>
+    <div id="pause-menu">
+        <h2>SYSTEM PAUSED</h2>
+        <button class="menu-btn" onclick="togglePause()">RESUME</button>
+        <button class="menu-btn" onclick="resetGame(); togglePause();">RESTART</button>
+    </div>
+
+    <div id="game-over">
+        <h1>SYSTEM FAILURE</h1>
+        <p>DISTANCE: <span id="final-score">0</span></p>
+        <button onclick="resetGame()">REBOOT SYSTEM</button>
+    </div>
+    <div id="instructions">USE LEFT / RIGHT ARROWS TO ROTATE</div>
+    
+    <div id="mobile-controls">
+        <div id="btn-left" class="control-btn"></div>
+        <div id="btn-right" class="control-btn"></div>
+    </div>
+
+    <!-- Import Three.js from CDN -->
+<script type="importmap">
+{
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        // Configuration
+        const TUNNEL_RADIUS = 8;
+        const SEGMENT_LENGTH = 20;
+        const NUM_SEGMENTS = 15;
+        const OBSTACLE_SPAWN_DIST = 150;
+        const SPEED_START = 40;
+        const MAX_SPEED = 100;
+        const SPEED_INC = 2.0;
+        
+        // 6 Lanes for Hexagon (0 to 5)
+        // Lane 1 is Center (0 deg).
+        // Lane 0 is Left (+60 deg), Lane 2 is Right (-60 deg).
+        const LANE_ANGLES = [];
+        for(let i=0; i<6; i++) {
+             LANE_ANGLES.push((1 - i) * (Math.PI / 3));
+        }
+
+        // State
+        let scene, camera, renderer, composer;
+        let player, playerMesh, playerWrapper;
+        let tunnelGroup;
+        let obstacles = [];
+        let particles = [];
+        let score = 0;
+        let speed = SPEED_START;
+        let currentLane = 1; // Start at lane 1 (Center)
+        let targetAngle = 0;
+        let currentAngle = 0;
+        let isGameOver = false;
+        let isPaused = false;
+        let lastTime = 0;
+        let spawnTimer = 0;
+
+        function createAmbientParticles() {
+             const geom = new THREE.BufferGeometry();
+             const count = 400;
+             const pos = new Float32Array(count * 3);
+             for(let i=0; i<count; i++) {
+                 pos[i*3] = (Math.random() - 0.5) * 20; // X
+                 pos[i*3+1] = (Math.random() - 0.5) * 20; // Y
+                 pos[i*3+2] = -Math.random() * 100; // Z
+             }
+             geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+             
+             const mat = new THREE.PointsMaterial({
+                 color: 0x4400ff, // Darker blue/purple instead of bright cyan
+                 size: 0.1,
+                 transparent: true,
+                 opacity: 0.3 // Reduced opacity
+             });
+             
+             const ambientSystem = new THREE.Points(geom, mat);
+             scene.add(ambientSystem);
+             return ambientSystem;
+        }
+        let ambientParticleSystem;
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x000000, 0.015); // Denser fog for solid look
+            // ...
+            
+            ambientParticleSystem = createAmbientParticles();
+            // ... existing init code ...
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 300);
+            // Camera positioned behind and above the player
+            // Player is at Y = -6.5 (approx), Z = -2
+            camera.position.set(0, -3, 10); 
+            camera.lookAt(0, -6, -20); // Look down the tunnel, slightly at the floor
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.body.appendChild(renderer.domElement);
+
+            // Post-processing (Bloom)
+            const renderScene = new RenderPass(scene, camera);
+            const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+            bloomPass.threshold = 0.1;
+            bloomPass.strength = 1.5;
+            bloomPass.radius = 0.5;
+
+            composer = new EffectComposer(renderer);
+            composer.addPass(renderScene);
+            composer.addPass(bloomPass);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x222222);
+            scene.add(ambientLight);
+            
+            const pointLight = new THREE.PointLight(0xffffff, 1, 50);
+            pointLight.position.set(0, 0, 5);
+            scene.add(pointLight);
+
+            createPlayer();
+            createTunnel();
+
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('keydown', onKeyDown);
+            
+            // Mobile Controls
+            document.getElementById('btn-left').addEventListener('touchstart', (e) => {
+                e.preventDefault(); // prevent mouse emulation
+                moveLeft();
+            });
+            document.getElementById('btn-right').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                moveRight();
+            });
+             // Fallback for mouse clicks on PC testing
+            document.getElementById('btn-left').addEventListener('mousedown', (e) => {
+                moveLeft();
+            });
+            document.getElementById('btn-right').addEventListener('mousedown', (e) => {
+                moveRight();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        function moveLeft() {
+            if (isGameOver) return;
+            currentLane--;
+            if (currentLane < 0) currentLane = 5; // Wrap around
+            targetAngle -= Math.PI / 3;
+        }
+
+        function moveRight() {
+            if (isGameOver) return;
+            currentLane++;
+            if (currentLane > 5) currentLane = 0; // Wrap around
+            targetAngle += Math.PI / 3;
+        }
+
+        function createPlayer() {
+            // Player Wrapper handles rotation around the tunnel center
+            playerWrapper = new THREE.Group();
+            scene.add(playerWrapper);
+
+            // Simple Rolling Sphere
+            const geometry = new THREE.SphereGeometry(0.8, 32, 32);
+            
+            // Create a cool wireframe material mixed with solid
+            const material = new THREE.MeshBasicMaterial({ 
+                color: 0x00ffff,
+                wireframe: true
+            }); 
+            const innerMat = new THREE.MeshBasicMaterial({
+                color: 0x000000
+            });
+            
+            playerMesh = new THREE.Mesh(geometry, material);
+            const innerMesh = new THREE.Mesh(new THREE.SphereGeometry(0.75, 32, 32), innerMat);
+            playerMesh.add(innerMesh);
+
+            // Add an internal glowing core
+            const coreGeo = new THREE.SphereGeometry(0.4, 16, 16);
+            const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const core = new THREE.Mesh(coreGeo, coreMat);
+            playerMesh.add(core);
+            
+            // Position player on the "floor" of the tunnel (bottom at angle 0)
+            // Y = -radius
+            // Move player slightly UP so it's visible inside the tunnel radius
+            // Fixed: Solid tunnel walls are at distance 'radius * cos(30)' from center
+            // radius=8. Inner radius = 8 * 0.866 = 6.928
+            // Player radius is 0.8.
+            // So Y should be -(6.928 - 0.8) = -6.128
+            // Let's put it at -6.0 to be safe
+            playerMesh.position.set(0, -6.0, -2); 
+            
+            scene.add(playerMesh);
+        }
+
+        function createTunnel() {
+            tunnelGroup = new THREE.Group();
+            scene.add(tunnelGroup);
+
+            for (let i = 0; i < NUM_SEGMENTS; i++) {
+                spawnTunnelSegment(i * SEGMENT_LENGTH);
+            }
+        }
+
+        function spawnTunnelSegment(z) {
+            const radius = TUNNEL_RADIUS;
+            const length = SEGMENT_LENGTH;
+            
+            // 1. Solid Base (Dark Tunnel Walls)
+            // Use BackSide so we see the inside clearly.
+            const geometry = new THREE.CylinderGeometry(radius, radius, length, 6, 1, true);
+            geometry.rotateX(-Math.PI / 2); // Lay flat along Z
+            geometry.rotateZ(Math.PI / 6);  // Align faces
+
+            const material = new THREE.MeshBasicMaterial({ 
+                color: 0x000000, // Black inside
+                side: THREE.BackSide,
+                transparent: true,
+                opacity: 0.0 // Invisible faces, just edges?
+            });
+            // Or if user wants "blue like before without texture, just edges":
+            // Let's restore the original wireframe look but keep solid shape logic?
+            // User said "blu come senza texture sono con bordi" -> "Blue like without texture only with edges"
+            // Let's revert to transparent faces + neon edges.
+            
+            const segment = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
+                color: 0x050510, // Very dark blue fill
+                side: THREE.BackSide,
+                transparent: true,
+                opacity: 0.8
+            }));
+            segment.position.z = -z - length/2;
+            
+            // Neon Edges
+            const edges = new THREE.EdgesGeometry(geometry);
+            const lineMat = new THREE.LineBasicMaterial({ color: 0x00aaff, linewidth: 2 });
+            const wireframe = new THREE.LineSegments(edges, lineMat);
+            segment.add(wireframe);
+            
+            tunnelGroup.add(segment);
+        }
+
+        function spawnObstacle(z) {
+            // Random lane from 0 to 5
+            const laneIdx = Math.floor(Math.random() * 6);
+            const angle = LANE_ANGLES[laneIdx];
+            
+            const geometry = new THREE.BoxGeometry(2.5, 1.5, 2.5);
+            const material = new THREE.MeshBasicMaterial({ color: 0xff3300 });
+            const obs = new THREE.Mesh(geometry, material);
+            
+            // Position on the tunnel wall
+            // Fixed: Align obstacles with the flat inner surface
+            // The inner radius to the center of the flat face is R * cos(30).
+            // The obstacle pivot is at its center. Height is 1.5.
+            // So we need to move it INWARDS by half height.
+            // Distance from center = InnerRadius - HalfHeight
+            const wallDist = TUNNEL_RADIUS * Math.cos(Math.PI/6);
+            const innerR = wallDist - 0.75; 
+            
+            obs.position.x = innerR * Math.sin(angle);
+            obs.position.y = -innerR * Math.cos(angle);
+            obs.position.z = -z;
+            
+            // Rotate obstacle to align with surface normal
+            obs.rotation.z = -angle;
+
+            obs.userData = {
+                active: true,
+                lane: laneIdx
+            };
+
+            // Add glowing frame
+            const edges = new THREE.EdgesGeometry(geometry);
+            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff }));
+            obs.add(line);
+
+            // Add obstacle to tunnelGroup so it rotates with the tunnel
+            tunnelGroup.add(obs);
+            obstacles.push(obs);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function onKeyDown(event) {
+            if (isGameOver) {
+                if(event.key === 'r' || event.key === 'R') resetGame();
+                return;
+            }
+
+            if (event.key === 'ArrowLeft' || event.key === 'a') {
+                moveLeft();
+            }
+            if (event.key === 'ArrowRight' || event.key === 'd') {
+                moveRight();
+            }
+            
+            // We no longer calculate targetAngle from absolute lane to avoid wrap-around stutter.
+            // Instead we increment/decrement continuously.
+            // currentLane handles logical position for collisions.
+            // targetAngle handles visual rotation.
+        }
+
+        function update(dt) {
+            if (isGameOver) return;
+
+            // Update Speed
+            speed = Math.min(MAX_SPEED, speed + SPEED_INC * dt);
+            score += speed * dt * 0.1;
+            document.getElementById('score').innerText = Math.floor(score);
+            document.getElementById('speed').innerText = Math.floor(speed);
+
+            // Rotate Player Wrapper towards target angle
+            // We rotate the wrapper around Z.
+            // If target is 60deg (Left), we want the player to move to that angle.
+            // Actually, visually it looks better if the WORLD rotates around the player?
+            // User asked "when I turn, I turn inside the hexagon".
+            // Let's move the player wrapper rotation.
+            
+            const rotSpeed = 6.0 * dt;
+            currentAngle = THREE.MathUtils.lerp(currentAngle, targetAngle, rotSpeed);
+            
+            // Rotate Player Mesh to simulate rolling
+            playerMesh.rotation.x -= speed * dt * 0.1;
+
+            // Apply rotation to the TUNNEL (World) instead of the player wrapper
+            // Player stays at bottom (visually) while world spins around
+            tunnelGroup.rotation.z = currentAngle;
+            
+            // Also rotate obstacles group? 
+            // Wait, obstacles are in SCENE not tunnelGroup currently?
+            // Let's check spawnObstacle... scene.add(obs).
+            // We should add obstacles to tunnelGroup or a worldGroup so they rotate WITH the tunnel.
+            
+            // Camera tilt for effect
+            // Smooth out the tilt to avoid snapping
+            const targetTilt = (currentAngle - targetAngle) * 0.3;
+            camera.rotation.z = THREE.MathUtils.lerp(camera.rotation.z, targetTilt, dt * 5);
+            
+            // Move World Objects towards camera
+            const moveDist = speed * dt;
+
+            // Tunnel
+            tunnelGroup.children.forEach(seg => {
+                if(seg.userData.isObstacle) {
+                     // Obstacle logic handled in separate loop below, but movement is shared if in group?
+                     // If we put obstacles in tunnelGroup, we don't need to move them manually in Z if we move the whole group?
+                     // But we need endless scrolling.
+                }
+                
+                seg.position.z += moveDist;
+                if (seg.position.z > 10) {
+                     if (seg.userData.isObstacle) {
+                         // handled by obstacle cleaner
+                     } else {
+                        seg.position.z -= NUM_SEGMENTS * SEGMENT_LENGTH;
+                     }
+                }
+            });
+
+            // Obstacles
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obs = obstacles[i];
+                obs.position.z += moveDist;
+                
+                // Collision Detection
+                // Player is effectively at Angle 0 (Bottom).
+                // Obstacles are at specific angles on the tunnel.
+                // The Tunnel is rotated by 'currentAngle'.
+                // So the obstacle's absolute angle is: ObsAngle + TunnelRotation.
+                // We check if an obstacle overlaps with the player at bottom (Angle 0).
+                
+                if (obs.userData.active && obs.position.z > -3 && obs.position.z < 1) {
+                     // Calculate world angle of obstacle
+                     // Obs local angle is obs.rotation.z (which is -LANE_ANGLE)
+                     // Wait, we positioned x/y based on angle.
+                     // Let's use the lane index.
+                     
+                     // The lane angle in world space:
+                     const laneAngle = LANE_ANGLES[obs.userData.lane];
+                     const worldAngle = laneAngle + currentAngle;
+                     
+                     // Normalize to -PI..PI
+                     let normAngle = Math.atan2(Math.sin(worldAngle), Math.cos(worldAngle));
+                     
+                     // Player is at Bottom (Angle 0 in our setup? No, bottom is -Y)
+                     // In our setup: Lane 1 (Center) is 0 deg (Bottom face).
+                     // If Tunnel Rotation is 0, Lane 1 is at Bottom. Player is at Bottom. Collision!
+                     // If Tunnel Rotation is 60 deg, Lane 1 moves to Right. Lane 0 (Left -60) moves to Bottom.
+                     // Player stays at Bottom.
+                     
+                     // So we check if normAngle is close to 0.
+                     if (Math.abs(normAngle) < 0.2) {
+                         gameOver();
+                     }
+                }
+
+                if (obs.position.z > 10) {
+                    tunnelGroup.remove(obs); // Remove from parent
+                    obstacles.splice(i, 1);
+                }
+            }
+
+            // Particles
+            updateParticles(dt);
+            
+            // Update Ambient Particles
+            if (ambientParticleSystem) {
+                const positions = ambientParticleSystem.geometry.attributes.position.array;
+                for(let i=2; i<positions.length; i+=3) {
+                     positions[i] += speed * dt * 0.8; // Move towards camera
+                     if(positions[i] > 5) {
+                         positions[i] = -100; // Reset to back
+                     }
+                }
+                ambientParticleSystem.geometry.attributes.position.needsUpdate = true;
+            }
+
+            // Spawn
+            spawnTimer += dt;
+            const spawnInterval = Math.max(0.2, 0.8 - (speed - SPEED_START) * 0.01);
+            if (spawnTimer > spawnInterval) {
+                spawnTimer = 0;
+                spawnObstacle(OBSTACLE_SPAWN_DIST);
+            }
+        }
+
+        function updateParticles(dt) {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.mesh.position.addScaledVector(p.vel, dt);
+                p.life -= dt;
+                p.mesh.material.opacity = p.life;
+                p.mesh.scale.multiplyScalar(0.95);
+                
+                if (p.life <= 0) {
+                    scene.remove(p.mesh);
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        function gameOver() {
+            isGameOver = true;
+            document.getElementById('game-over').style.display = 'block';
+            document.getElementById('final-score').innerText = Math.floor(score);
+            playerMesh.visible = false;
+            createExplosion(playerMesh.getWorldPosition(new THREE.Vector3()));
+        }
+
+        function createExplosion(pos) {
+            for (let i = 0; i < 30; i++) {
+                const geo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+                const mat = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true });
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.copy(pos);
+                
+                // Random velocity
+                const vel = new THREE.Vector3(
+                    (Math.random() - 0.5) * 20,
+                    (Math.random() - 0.5) * 20,
+                    (Math.random() - 0.5) * 20
+                );
+                
+                scene.add(mesh);
+                particles.push({ mesh, vel, life: 1.0 });
+            }
+        }
+
+        window.resetGame = function() {
+            isGameOver = false;
+            score = 0;
+            speed = SPEED_START;
+            currentLane = 1;
+            targetAngle = 0;
+            currentAngle = 0;
+            
+            playerMesh.visible = true;
+            playerWrapper.rotation.z = 0;
+            camera.rotation.z = 0;
+
+            document.getElementById('game-over').style.display = 'none';
+            document.getElementById('score').innerText = '0';
+
+            obstacles.forEach(o => scene.remove(o));
+            obstacles = [];
+        };
+
+        window.togglePause = function() {
+            if (isGameOver) return;
+            isPaused = !isPaused;
+            const menu = document.getElementById('pause-menu');
+            const btn = document.getElementById('pause-btn');
+            
+            if (isPaused) {
+                menu.style.display = 'block';
+                btn.style.display = 'none';
+            } else {
+                menu.style.display = 'none';
+                btn.style.display = 'flex';
+                lastTime = 0; // Reset lastTime to prevent large delta jump
+            }
+        };
+
+        function animate(time) {
+            requestAnimationFrame(animate);
+            
+            if (isPaused) return;
+
+            if (lastTime === 0) { lastTime = time; }
+            const dt = Math.min((time - lastTime) / 1000, 0.1);
+            lastTime = time;
+            update(dt);
+            composer.render();
+        }
+
+
+        // Fix Lane Angles for correct Left/Right mapping
+        // We need consistent array for collision checks
+        // Lane 1 (Center) = 0. Lane 0 = 60. Lane 2 = -60.
+        // Using the loop: i=0 -> 60. i=1 -> 0. i=2 -> -60. Correct.
+        
+        // LANE_ANGLES definitions are correct as generated by loop.
+        
+        init();
+</script>
+</body>
+</html>
